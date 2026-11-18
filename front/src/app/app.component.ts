@@ -55,49 +55,87 @@ export class AppComponent implements OnInit {
      * https://huggingface.co/stabilityai/stable-diffusion-3.5-large?inference_api=true&inference_provider=hf-inference&language=curl
      * @param text
      */
-    callIA(text) {
-
+    callIA(text: string) { // 加上 : string 避免 text 类型标红
         this.conversation = this.conversation.concat('<br /><b>Me</b> : ' + text);
 
-        // text sample
+        // 根据 PDF 要求，判断是否以 "dessine-moi" 开头
+        if (text.toLowerCase().startsWith('dessine-moi')) {
+            
+            // // ==========================================
+            // // 1. 图像生成部分 (解锁原先的 image sample)
+            // // ==========================================
+            // let headers = new HttpHeaders({
+            //     'Content-Type': 'application/json',
+            //     // TODO 已完成：获取 environment 中的 API Key 用于 Hugging Face
+            //     'Authorization': `Bearer ${environment.apiKey}`
+            // });
 
-        let headers = new HttpHeaders({
-          // @todo à complèter, vous pouvez récupérez votre clé renseignée dans environments/environment.ts avec environment.apiKey
-        });
+            // // need to push all the conversation each time to keep the context
+            // this.messages.push({'role': 'user', 'content': text});
+            
+            // // TODO 已完成：Hugging Face 图像接口需要的请求体格式
+            // let requestData = { inputs: text }; 
 
-        // need to push all the conversation each time to keep the context
-        this.messages.push({'role': 'user', 'content': text});
-        let requestData = '' // todo à complèter
+            // const url = 'https://huggingface.co/stabilityai/stable-diffusion-3.5-large';
+            // // TODO 已完成：填入 PDF 指定的 Stable Diffusion 3.5 接口地址
+            // this.http.post<any>(url, JSON.stringify(requestData), {headers: headers, observe: 'response', responseType: 'blob' as 'json'})
+            //   .subscribe(data => {
+            //       this.addResponse('<img src="'+URL.createObjectURL(data.body)+'" />', false);
+            //     },
+            //     error => {
+            //       console.log(error);
+            //       this.addResponse("Erreur de génération d'image");
+            //     });
 
-        this.http.post<any>('URL ICI', JSON.stringify(requestData), {headers: headers})
-            .subscribe(data => {
-                this.addResponse(data.choices[0].message.content);
-            },
-            error => {
-               console.log(error);
-               this.addResponse(error.message);
+            let headers = new HttpHeaders({
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${environment.apiKey}`
             });
 
+            this.messages.push({'role': 'user', 'content': text});
+            let requestData = { prompt: text };
 
-      // image sample
-/*
-      let headers = new HttpHeaders({
-        // todo à complèter
-      });
+            const cfUrl = `/cf-api/client/v4/accounts/${environment.accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
 
-      // need to push all the conversation each time to keep the context
-      this.messages.push({'role': 'user', 'content': text});
-      let requestData = '' // todo à complèter
-
-        this.http.post<any>('', JSON.stringify(requestData), {headers: headers, observe: 'response', responseType: 'blob' as 'json'})
-          .subscribe(data => {
-              this.addResponse('<img src="'+URL.createObjectURL(data.body)+'" />', false);
+            this.http.post<any>(cfUrl, requestData, { headers: headers })
+            .subscribe(response => {
+                const imageUrl = 'data:image/jpeg;base64,' + response.result.image;
+                this.addResponse('<img src="' + imageUrl + '" />', false);
             },
             error => {
-              console.log(error);
-              this.addResponse(error.message);
+                console.log(error);
+                this.addResponse("Erreur de génération d'image");
             });
-*/
+
+        } else {
+
+            // ==========================================
+            // 2. 文本对话部分 (原先的 text sample - 接入本地 Ollama)
+            // ==========================================
+            let headers = new HttpHeaders({
+                'Content-Type': 'application/json'
+            });
+
+            this.messages.push({'role': 'user', 'content': text});
+            
+            // TODO 已完成：Ollama 请求体
+            let requestData = {
+                model: 'llama3.2',
+                messages: this.messages,
+                stream: false
+            };
+
+            // TODO 已完成：填入本地 Ollama API 地址
+            this.http.post<any>('http://localhost:11434/api/chat', JSON.stringify(requestData), {headers: headers})
+                .subscribe(data => {
+                    // 修改点：适配 Ollama 的返回值路径
+                    this.addResponse(data.message.content);
+                },
+                error => {
+                   console.log(error);
+                   this.addResponse(error.message);
+                });
+        }
     }
 
     addResponse(response: string, toVoice: boolean = true) {
@@ -113,7 +151,7 @@ export class AppComponent implements OnInit {
       this.addResponse('<img src="'+URL.createObjectURL(blob)+'" />', false);
     }
 
-    textToVoice(text) {
+    textToVoice(text:string) {
         this.textToSpeech.say(text);
     }
 }

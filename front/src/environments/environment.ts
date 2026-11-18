@@ -4,7 +4,8 @@
 
 export const environment = {
   production: false,
-  apiKey: 'your_key',
+  apiKey: 'MY_CLOUDFLARE_TOKEN',
+  accountId: 'MY_CLOUDFLARE_ACCOUNT_ID'
 };
 
 /*

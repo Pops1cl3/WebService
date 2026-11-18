@@ -1,0 +1,10 @@
+{
+  "/cf-api": {
+    "target": "https://api.cloudflare.com",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/cf-api": ""
+    }
+  }
+}
